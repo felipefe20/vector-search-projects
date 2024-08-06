@@ -35,18 +35,28 @@ def generate_embedding(text: str) -> list[float]:
 db = client.sample_mflix
 collection = db.movies
 
-query = "Movie about dinosaurs"
+query = "Movie about the space"
 
-
-results = collection.aggregate([
+pipeline=[
   {"$vectorSearch": {
-    "queryVector": generate_embedding(query),
-    "path": "plot_embedding_hf",
-    "numCandidates": 100,
-    "limit": 4,
-    "index": "PlotSemanticSearch",
-      }}
-])
+        "queryVector": generate_embedding(query),
+        "path": "plot_embedding_hf",
+        "numCandidates": 100,
+        "limit": 4,
+        "index": "PlotSemanticSearch"
+          }},
+    {"$project": 
+      
+          {"score": {"$meta": "vectorSearchScore"}}
+  }
+]
+results=collection.aggregate(pipeline)
 
-for document in results:
-    print(f'Movie Name: {document["title"]},\nMovie Plot: {document["plot"]}\n')
+#for i in results:
+#     print(i) 
+
+
+for i in results:
+    document=collection.find_one({"_id":i["_id"]})
+    print(f'Movie Name: {document["title"]},\nMovie Plot: {document["plot"]}\n',
+            "score:", i["score"], "\n")
