@@ -32,14 +32,18 @@ def generate_embedding(text: str) -> list[float]:
 
   return response.json()
 
-query = "Felipe  is the best data engineer in the world!"
-#print(generate_embedding(query))
-
-
 
 db = client.sample_mflix
 collection = db.movies
-
-for doc in collection.find({'plot':{"$exists": True}}).limit(50):
-   doc['plot_embedding_hf'] = generate_embedding(doc['plot'])
-   collection.replace_one({'_id': doc['_id']}, doc)
+#add counter to the loop
+counter = 0
+for doc in collection.find({'fullplot':{"$exists": True}}):
+   #check if the plot embedding already exists
+    if 'plot_embedding_hf' not in doc:
+      try:
+        doc['plot_embedding_hf'] = generate_embedding(doc['fullplot'])
+        collection.replace_one({'_id': doc['_id']}, doc)
+        counter=counter+1
+        print(f"Updated{counter}",)
+      except:
+        pass

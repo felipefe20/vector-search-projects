@@ -35,28 +35,49 @@ def generate_embedding(text: str) -> list[float]:
 db = client.sample_mflix
 collection = db.movies
 
-query = "Movie about the space"
+query = "Dinosaurs"
 
-pipeline=[
-  {"$vectorSearch": {
-        "queryVector": generate_embedding(query),
+#query_filter = {"year":{'$gte': 1975, '$lte': 1977}}
+query_filter={
+  "genres": {
+    "$in": ["Sci-Fi"]
+  },
+  #"rated": {
+  #  "$in": [
+  #    "Any"
+  #  ]
+  #},
+  "year": {
+    "$gte": 1900,
+    "$lte": 1980
+  }
+}
+initial_results = collection.find(query_filter, {'_id': 1})
+matching_ids = [doc['_id'] for doc in initial_results]
+
+query_vector = generate_embedding(query)
+pipeline = []
+
+pipeline.append({
+    "$vectorSearch": {
+        "queryVector": query_vector,
         "path": "plot_embedding_hf",
         "numCandidates": 100,
-        "limit": 4,
-        "index": "PlotSemanticSearch"
-          }},
-    {"$project": 
-      
-          {"score": {"$meta": "vectorSearchScore"}}
-  }
-]
-results=collection.aggregate(pipeline)
+        "limit": 10,
+        "index": "PlotSemanticSearch",
+    }
+})
 
-#for i in results:
-#     print(i) 
+# Add a match stage to limit vector search to the initially filtered results
+pipeline.append({"$match": {"_id": {"$in": matching_ids}}})
 
+pipeline.append({"$project": {"score": {"$meta": "vectorSearchScore"}}})
+
+results = collection.aggregate(pipeline)
 
 for i in results:
     document=collection.find_one({"_id":i["_id"]})
-    print(f'Movie Name: {document["title"]},\nMovie Plot: {document["plot"]}\n',
-            "score:", i["score"], "\n")
+    print(f'Movie Name: {document["title"]},\nMovie Plot: {document["fullplot"]}\n')
+    print(f'Movie Genre: {document["genres"]}')
+    print(f'Movie Year: {document["year"]}')
+    print("score:", i["score"], "\n")
