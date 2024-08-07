@@ -70,11 +70,17 @@ year_filter=list(year_filter)
 
 
 #st.write(genre_filter)
-st.write(year_filter)
-st.write(rated_filter)
+#st.write(year_filter)
+#st.write(rated_filter)
 
 # Chat input
-query= st.text_input("Ask for movie recommendations")
+col1, col2 = st.columns(2)
+with col1:
+  query= st.text_input("Ask for movie recommendations")
+with col2:
+  #How many movies to recommend
+
+  num_movies = st.slider('Number of movies to recommend:', min_value=1, max_value=50, value=1)
 
 
 #query = "Outer space adventure"
@@ -104,7 +110,7 @@ if query:
   #   "year":{'$gte': year_filter[0], '$lte': year_filter[1]}
   #}
 
-  st.write(query_filter)
+  #st.write(query_filter)
 
   initial_results = collection.find(query_filter, {'_id': 1})
   matching_ids = [doc['_id'] for doc in initial_results]
@@ -128,14 +134,25 @@ if query:
   pipeline.append({"$project": {"score": {"$meta": "vectorSearchScore"}}})
 
   results = collection.aggregate(pipeline)
-
+  counter=1
   for i in results:
       document=collection.find_one({"_id":i["_id"]})
-      st.write(f'Movie Name: {document["title"]},\nMovie Plot: {document["fullplot"]}\n')
-      st.write(f'Movie Genre: {document["genres"]}')
-      st.write(f'Movie Year: {document["year"]}')
-      st.write(f'rated: {document["rated"]}')
-      st.write("score:", i["score"], "\n")
-      st.write("imdb rating:", document["imdb"]["rating"], "\n")
+      col1,col2, col3= st.columns(3)
+      with col1:
+        st.write(f"## {counter}")
+        counter=counter+1
+        st.write("Score:", i.get("score", "N/A"), "\n")
+        st.write(f'*Title*: {document.get("title", "N/A")}')
+        st.write("*imdb rating*:", document.get("imdb", {}).get("rating", "N/A"), "\n")
+        st.write(f'*Genre*: {document.get("genres", "N/A")}')
+        st.write(f'*Year*: {document.get("year", "N/A")}')
+        st.write(f'*rated*: {document.get("rated", "N/A")}')
+      with col2:
+         st.write(f'*Plot*: {document.get("fullplot", "N/A")}')
+      with col3:
+        st.image(document.get("poster", "N/A"), width=200)
+      
+      st.write("--------------------------------------------------------------------")
+
 else: 
   st.write("No movies found. Try another query!")
