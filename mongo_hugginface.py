@@ -27,45 +27,55 @@ class EmbeddingsUtil:
         if response.status_code != 200:
             raise ValueError(f"Request failed with status code {response.status_code}: {response.text}")
 
-        return response.json()
+        return response.json() 
 
-    def search_movies(self, query: str, genres=None, year_range=None, rated=None):
+    def search_movies(self, query: str, genre_filter=None, year_filter=None, rated_filter=None,imdb_rating_filter=None):
         query_filter = {}
-        if len(genres)>0:
-            query_filter['genres'] = {'$in': genres}
+        if len(genre_filter)>0:
+            query_filter['genres'] = {'$in': genre_filter}
+
+        if year_filter:
+            query_filter['year'] = {'$gte': year_filter[0], '$lte': year_filter[1]}
+
+        if len(rated_filter)>0:
+            query_filter['rated'] = {"$in":rated_filter}
+
+        if imdb_rating_filter:
+            query_filter['imdb.rating'] = {'$gte': imdb_rating_filter[0], '$lte': imdb_rating_filter[1]}
+
         
-        if year_range:
-            query_filter['year'] = {'$gte': year_range[0], '$lte': year_range[1]}
-        
-        if "Any" not in rated:
-            query_filter['rated'] = {"$in":rated}
-        else:
-            pass
-        
+        #else:
+        #    pass
+
+        #query_filter = {
+        #   "genres": {'$in': genre_filter},
+        #    "rated": {"$in":rated_filter},
+        #   "year":{'$gte': year_filter[0], '$lte': year_filter[1]}
+        #}
+
+        #st.write(query_filter)
+        self.collection = self.db.movies
+        initial_results = self.collection.find(query_filter, {'_id': 1})
+        matching_ids = [doc['_id'] for doc in initial_results]
+
         query_vector = self.generate_embedding(query)
-        
-        # Start the aggregation pipeline with a $match stage if there are filters to apply
         pipeline = []
-        
-        
-        # Add the $vectorSearch stage to the pipeline
+
         pipeline.append({
             "$vectorSearch": {
                 "queryVector": query_vector,
                 "path": "plot_embedding_hf",
-                "numCandidates": 100,
-                "limit": 4,
+                "numCandidates": 5000,
+                "limit": 10,
                 "index": "PlotSemanticSearch",
             }
         })
-        
-        #pipeline.append({"$project": 
-      
-        #  {"score": {"$meta": "vectorSearchScore"}}
 
-        #                })
-        if query_filter:
-            pipeline.append({"$match": query_filter})
-        # Use the aggregate method directly on the collection with the constructed pipeline
+        # Add a match stage to limit vector search to the initially filtered results
+        pipeline.append({"$match": {"_id": {"$in": matching_ids}}})
+
+        pipeline.append({"$project": {"score": {"$meta": "vectorSearchScore"}}})
+
         results = self.collection.aggregate(pipeline)
+
         return results
