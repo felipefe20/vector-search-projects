@@ -123,7 +123,7 @@ if query:
           "queryVector": query_vector,
           "path": "plot_embedding_hf",
           "numCandidates": 5000,
-          "limit": 10,
+          "limit": num_movies,
           "index": "PlotSemanticSearch",
       }
   })
@@ -135,24 +135,27 @@ if query:
 
   results = collection.aggregate(pipeline)
   counter=1
-  for i in results:
-      document=collection.find_one({"_id":i["_id"]})
-      col1,col2, col3= st.columns(3)
-      with col1:
-        st.write(f"## {counter}")
-        counter=counter+1
-        st.write("Score:", i.get("score", "N/A"), "\n")
-        st.write(f'*Title*: {document.get("title", "N/A")}')
-        st.write("*imdb rating*:", document.get("imdb", {}).get("rating", "N/A"), "\n")
-        st.write(f'*Genre*: {document.get("genres", "N/A")}')
-        st.write(f'*Year*: {document.get("year", "N/A")}')
-        st.write(f'*rated*: {document.get("rated", "N/A")}')
-      with col2:
-         st.write(f'*Plot*: {document.get("fullplot", "N/A")}')
-      with col3:
-        st.image(document.get("poster", "N/A"), width=200)
-      
-      st.write("--------------------------------------------------------------------")
+  while counter<= num_movies:
+    for i in results:
+        document=collection.find_one({"_id":i["_id"]})
+        col1,col2, col3= st.columns(3)
+        with col1:
+          st.write(f"## {counter}")
+          counter=counter+1
+          st.write("Score:", i.get("score", "N/A"), "\n")
+          st.write(f'*Title*: {document.get("title", "N/A")}')
+          st.write("*imdb rating*:", document.get("imdb", {}).get("rating", "N/A"), "\n")
+          st.write(f'*Genre*: {document.get("genres", "N/A")}')
+          st.write(f'*Year*: {document.get("year", "N/A")}')
+          st.write(f'*rated*: {document.get("rated", "N/A")}')
+        with col2:
+          st.write(f'*Plot*: {document.get("fullplot", "N/A")}')
+        with col3:
+          try:
+            st.image(document.get("poster"), width=200)
+          except:
+            pass
+        st.write("--------------------------------------------------------------------")
 
 else: 
   st.write("No movies found. Try another query!")
